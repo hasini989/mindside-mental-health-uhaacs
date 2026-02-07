@@ -1,0 +1,43 @@
+import cv2
+from fer import FER
+
+# 1. Initialize the detector (mtcnn=True is slower but more accurate)
+detector = FER(mtcnn=False) 
+
+# 2. Start Camera
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret: break
+    
+    # 3. Detect Emotions
+    # The detect_emotions function returns a list of faces with their scores
+    result = detector.detect_emotions(frame)
+    
+    for face in result:
+        (x, y, w, h) = face["box"]
+        emotions = face["emotions"]
+        
+        # Get the highest scoring emotion
+        top_emotion = max(emotions, key=emotions.get)
+        score = emotions[top_emotion]
+        
+        # Panic Logic: Flag Fear or Sadness
+        color = (0, 255, 0) # Default Green
+        text = f"{top_emotion}: {int(score*100)}%"
+        
+        if top_emotion == "fear" and score > 0.5:
+            color = (0, 0, 255) # Red
+            text = "ALERT: PANIC DETECTED"
+        
+        # Draw on screen
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+        cv2.putText(frame, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+
+    cv2.imshow('Simplified Panic Detection', frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
