@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Behavior } from '../App';
+import { Behavior, Reality } from '../App';
+import { getAIPrompts } from '../App'; // Import the service we merged into App.tsx
 import Card from './Card';
 import Button from './Button';
-import { Reality } from '../App';
+import React from 'react';
 
 type BehaviorSelectionProps = {
-  onSelect: (behavior: Behavior) => void;
+  // Updated to allow the optional AI prompt string
+  onSelect: (behavior: Behavior, aiPrompt?: string) => void;
   reality: Reality;
 };
 
@@ -20,15 +22,30 @@ const behaviors: BehaviorOption[] = [
   { id: 'over-apologize', label: 'I over-apologize' },
   { id: 'responsible-for-others', label: "I feel responsible for others' emotions" },
   { id: 'struggle-to-ask', label: 'I struggle to ask for help' },
+  { id: 'solid-foundation', label: 'I want to build a solid foundation' },
 ];
 
 export default function BehaviorSelection({ onSelect, reality }: BehaviorSelectionProps) {
   const [selected, setSelected] = useState<Behavior | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // Track AI generation
   const isRift = reality === 'rift';
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selected) {
-      onSelect(selected);
+      setIsLoading(true);
+      try {
+        // 1. Call the AI service merged in App.tsx
+        const aiGeneratedPrompt = await getAIPrompts(selected, reality);
+        
+        // 2. Pass both the behavior and the AI prompt back to the parent
+        onSelect(selected, aiGeneratedPrompt); 
+      } catch (error) {
+        console.error("Failed to generate AI prompt:", error);
+        // Fallback to just behavior if AI fails
+        onSelect(selected);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -36,8 +53,8 @@ export default function BehaviorSelection({ onSelect, reality }: BehaviorSelecti
     <div className="min-h-screen flex items-center justify-center px-6 py-12 pt-24">
       <div className="max-w-3xl w-full">
         <div className="text-center mb-12">
-          <h2 className={`text-4xl mb-6 font-benguiat tracking-wider transition-all duration-500 ${
-            isRift ? 'text-[#ff0000]' : 'text-[#FFD700] font-celestial'
+          <h2 className={`text-4xl mb-6 tracking-wider transition-all duration-500 ${
+            isRift ? 'text-[#ff0000] font-benguiat' : 'text-[#FFD700] font-celestial'
           }`}>
             SELECT PATTERN
           </h2>
@@ -47,7 +64,7 @@ export default function BehaviorSelection({ onSelect, reality }: BehaviorSelecti
           <p className={`text-base font-mono uppercase tracking-wide transition-all duration-500 ${
             isRift ? 'text-[#999999]' : 'text-[#94a3b8]'
           }`}>
-            Choose the pattern that resonates most right now.
+            {isLoading ? 'Consulting the patterns...' : 'Choose the pattern that resonates most right now.'}
           </p>
         </div>
 
@@ -55,9 +72,9 @@ export default function BehaviorSelection({ onSelect, reality }: BehaviorSelecti
           {behaviors.map((behavior) => (
             <Card
               key={behavior.id}
-              onClick={() => setSelected(behavior.id)}
+              onClick={() => !isLoading && setSelected(behavior.id)}
               selected={selected === behavior.id}
-              interactive
+              interactive={!isLoading}
               reality={reality}
             >
               <p className={`text-base font-mono transition-all duration-500 ${
@@ -68,7 +85,13 @@ export default function BehaviorSelection({ onSelect, reality }: BehaviorSelecti
         </div>
 
         <div className="flex justify-center">
-          <Button onClick={handleContinue} disabled={!selected} variant="primary" text="CONTINUE" reality={reality} />
+          <Button 
+            onClick={handleContinue} 
+            disabled={!selected || isLoading} 
+            variant="primary" 
+            text={isLoading ? "GENERATING..." : "CONTINUE"} 
+            reality={reality} 
+          />
         </div>
       </div>
     </div>

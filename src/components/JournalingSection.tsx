@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Button from './Button';
 import EmotionalMonitor from './EmotionalMonitor';
 import PanicInterventionModal from './PanicInterventionModal';
@@ -12,27 +12,41 @@ type JournalingSectionProps = {
   onExitPanicMode: () => void;
 };
 
-export default function JournalingSection({ prompt, onStartOver, reality, onPanicMode, onExitPanicMode }: JournalingSectionProps) {
+export default function JournalingSection({ 
+  prompt, 
+  onStartOver, 
+  reality, 
+  onPanicMode, 
+  onExitPanicMode 
+}: JournalingSectionProps) {
   const [journalText, setJournalText] = useState('');
   const [showPanicModal, setShowPanicModal] = useState(false);
   
   const isRift = reality === 'rift';
-  const isHorizon = reality === 'horizon';
 
-  // For demo purposes - in real app this would be triggered by emotion detection
+  // Combined Logic: Triggers the Modal, switches Theme, and updates text
   const handleDistressDetected = () => {
     setShowPanicModal(true);
     onPanicMode();
+    
+    // Dynamically insert a supportive note into the journal
+    setJournalText(prev => {
+      const systemNote = "\n\n[System Note: Elevated distress detected. Focus on your breathing as you write.]";
+      // Prevent duplicate notes if distress is detected multiple times
+      if (prev.includes(systemNote)) return prev;
+      return prev + systemNote;
+    });
   };
 
   return (
     <div className="min-h-screen px-6 py-12 pt-24">
-      {/* Emotional Monitor - Top Right */}
+      {/* AI Monitoring - Specific to this view */}
       <EmotionalMonitor onDistressDetected={handleDistressDetected} reality={reality} />
 
-      {/* Panic Intervention Modal */}
+      {/* Panic Intervention Overlay */}
       <PanicInterventionModal 
         isOpen={showPanicModal} 
+        reality={reality}
         onClose={() => {
           setShowPanicModal(false);
           onExitPanicMode();
@@ -61,6 +75,7 @@ export default function JournalingSection({ prompt, onStartOver, reality, onPani
           </p>
         </div>
 
+        {/* Insight Prompt Box */}
         <div className={`backdrop-blur-sm rounded-sm p-8 mb-6 border transition-all duration-500 ${
           isRift 
             ? 'bg-[#0f0f0f]/60 border-[#333333]' 
@@ -73,6 +88,7 @@ export default function JournalingSection({ prompt, onStartOver, reality, onPani
           </p>
         </div>
 
+        {/* Main Writing Area */}
         <textarea
           value={journalText}
           onChange={(e) => setJournalText(e.target.value)}
@@ -88,10 +104,10 @@ export default function JournalingSection({ prompt, onStartOver, reality, onPani
           <Button onClick={onStartOver} variant="secondary" reality={reality} text="START OVER" />
         </div>
 
-        {/* Demo button for panic intervention - can be removed or hidden */}
+        {/* Manual Trigger for Users who want Grounding Exercises */}
         <div className="text-center mt-6">
           <button
-            onClick={() => setShowPanicModal(true)}
+            onClick={handleDistressDetected}
             className={`text-xs transition-colors underline font-mono uppercase tracking-wider ${
               isRift 
                 ? 'text-[#666666] hover:text-[#ff0000]' 
